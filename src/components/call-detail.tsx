@@ -8,6 +8,7 @@ import { AudioPlayer } from "@/components/audio-player";
 import { SentimentBadge, SuccessBadge } from "@/components/filter-bar";
 import { callEmail, callPhoneNumber, formatDateTime, formatDuration, formatReason, formatClock } from "@/lib/format";
 import { formatUsd } from "@/lib/analytics";
+import { useAuth } from "@/lib/auth-context";
 import type { RetellCall } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -79,6 +80,8 @@ function Meta({ label, value }: { label: string; value: string }) {
 }
 
 export function CallDetailBody({ call }: { call: RetellCall }) {
+  const { isAdmin } = useAuth();
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
@@ -115,7 +118,9 @@ export function CallDetailBody({ call }: { call: RetellCall }) {
         <Meta label="Duration" value={formatDuration(call.duration_ms)} />
         <Meta label="Started" value={formatDateTime(call.start_timestamp)} />
         <Meta label="Ended" value={formatDateTime(call.end_timestamp)} />
-        <Meta label="Retell cost" value={call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"} />
+        {isAdmin && (
+          <Meta label="Retell cost" value={call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"} />
+        )}
       </div>
     </div>
   );

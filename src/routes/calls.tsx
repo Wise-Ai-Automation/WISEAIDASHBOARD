@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowUpDown, Clock, DollarSign, Download, PhoneCall, Receipt, Search } from "lucide-react";
+import { ArrowUpDown, Clock, DollarSign, Download, PhoneCall, Receipt, Search, Target, Timer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -14,6 +14,7 @@ import { useCalls } from "@/hooks/use-calls";
 import { callEmail, callPhoneNumber, downloadCsv, formatDateTime, formatDuration, formatReason, toCsv } from "@/lib/format";
 import type { RetellCall } from "@/lib/types";
 import { formatUsd } from "@/lib/analytics";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/calls")({
   head: () => ({
@@ -37,6 +38,7 @@ type SortKey = "start_timestamp" | "duration_ms" | "agent_name";
 const PAGE_SIZE = 15;
 
 function CallsPage() {
+  const { isAdmin } = useAuth();
   const { data: calls, isLoading, isError } = useCalls();
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("start_timestamp");
@@ -74,6 +76,9 @@ function CallsPage() {
   const totalTalkMs = filtered.reduce((sum, call) => sum + call.duration_ms, 0);
   const pricedCalls = filtered.filter((call) => call.call_cost != null).length;
   const averageCost = pricedCalls ? totalCost / pricedCalls : 0;
+  const avgDurationMs = filtered.length ? totalTalkMs / filtered.length : 0;
+  const successCount = filtered.filter((c) => c.call_analysis?.call_successful).length;
+  const successRate = filtered.length ? (successCount / filtered.length) * 100 : 0;
 
   function sortBy(key: SortKey) {
     if (key === sortKey) setAsc(!asc);
@@ -108,7 +113,7 @@ function CallsPage() {
               toast.error("Nothing to export in this view.");
               return;
             }
-            downloadCsv(`calls-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(filtered));
+            downloadCsv(`calls-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(filtered, isAdmin));
             toast.success(`Exported ${filtered.length} calls`);
           }}
         >
@@ -121,14 +126,29 @@ function CallsPage() {
           <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><PhoneCall className="size-3.5 text-primary" />Calls shown</div>
           <div className="num mt-2 font-display text-xl font-bold text-foreground">{filtered.length.toLocaleString()}</div>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><DollarSign className="size-3.5 text-primary" />Total cost</div>
-          <div className="num mt-2 font-display text-xl font-bold text-foreground">{formatUsd(totalCost)}</div>
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Receipt className="size-3.5 text-primary" />Average cost</div>
-          <div className="num mt-2 font-display text-xl font-bold text-foreground">{pricedCalls ? formatUsd(averageCost) : "—"}</div>
-        </div>
+        {isAdmin ? (
+          <>
+            <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><DollarSign className="size-3.5 text-primary" />Total cost</div>
+              <div className="num mt-2 font-display text-xl font-bold text-foreground">{formatUsd(totalCost)}</div>
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Receipt className="size-3.5 text-primary" />Average cost</div>
+              <div className="num mt-2 font-display text-xl font-bold text-foreground">{pricedCalls ? formatUsd(averageCost) : "—"}</div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Timer className="size-3.5 text-primary" />Avg duration</div>
+              <div className="num mt-2 font-display text-xl font-bold text-foreground">{formatDuration(avgDurationMs)}</div>
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Target className="size-3.5 text-primary" />Success rate</div>
+              <div className="num mt-2 font-display text-xl font-bold text-foreground">{`${successRate.toFixed(1)}%`}</div>
+            </div>
+          </>
+        )}
         <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
           <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><Clock className="size-3.5 text-primary" />Talk time</div>
           <div className="num mt-2 font-display text-xl font-bold text-foreground">{formatDuration(totalTalkMs)}</div>
@@ -176,7 +196,7 @@ function CallsPage() {
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Sentiment</th>
                   <th className="px-4 py-3 font-medium">Success</th>
-                   <th className="px-4 py-3 font-medium">Cost</th>
+                  {isAdmin && <th className="px-4 py-3 font-medium">Cost</th>}
                   <th className="min-w-64 px-4 py-3 font-medium">Summary</th>
                 </tr>
               </thead>
@@ -203,9 +223,11 @@ function CallsPage() {
                     <td className="px-4 py-3">
                       <SuccessBadge successful={call.call_analysis.call_successful} />
                     </td>
-                    <td className="num whitespace-nowrap px-4 py-3 font-medium">
-                      {call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}
-                    </td>
+                    {isAdmin && (
+                      <td className="num whitespace-nowrap px-4 py-3 font-medium">
+                        {call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <span className="line-clamp-2 max-w-md text-muted-foreground">
                         {call.call_analysis.call_summary}
@@ -230,10 +252,12 @@ function CallsPage() {
                     <div className="truncate text-sm font-semibold text-foreground">{call.agent_name}</div>
                     <div className="mt-0.5 text-xs text-muted-foreground">{formatDateTime(call.start_timestamp)}</div>
                   </div>
-                  <div className="num shrink-0 text-right text-sm font-bold text-foreground">
-                    {call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}
-                    <div className="mt-0.5 text-[11px] font-normal text-muted-foreground">Retell cost</div>
-                  </div>
+                  {isAdmin && (
+                    <div className="num shrink-0 text-right text-sm font-bold text-foreground">
+                      {call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}
+                      <div className="mt-0.5 text-[11px] font-normal text-muted-foreground">Retell cost</div>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span className="text-xs text-muted-foreground">{formatDuration(call.duration_ms)}</span>

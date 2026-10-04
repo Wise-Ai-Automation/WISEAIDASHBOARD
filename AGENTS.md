@@ -8,7 +8,6 @@
 - Charts and KPI aggregation live in `src/lib/analytics.ts`, kept pure so they can be unit tested and reused across pages.
 
 - Campaign launches live in `src/lib/campaigns.functions.ts`; the server re-checks the agent and caller number against the user's assignments before calling Retell's batch-call API, so the browser can't reach agents or numbers it wasn't given.
-- Billing (per-client price per minute, daily spend limit) lives in `src/lib/billing.functions.ts` with admin-only tables `client_billing` and `workspace_settings`; client spend is computed live from calls on each client's assigned agents, never stored.
-- Exact Retell costs are visible to subaccounts for their server-filtered calls; admin billing rates, revenue, profit, and workspace limits remain admin-only.
+- Pricing and Retell costs are strictly hidden from subaccounts across all pages, tables, detail drawers, CSV exports, and server API responses; Retell costs, billing rates, revenue, profit, and workspace limits remain admin-only.
 
 - Theme is applied before paint in the root head, with the persisted light/dark preference controlled by ThemeToggle; this avoids a flash and keeps all pages consistent.

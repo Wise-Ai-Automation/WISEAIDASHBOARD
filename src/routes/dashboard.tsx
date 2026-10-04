@@ -23,6 +23,7 @@ import {
 } from "@/lib/analytics";
 import { callPhoneNumber, formatDateTime, formatDuration } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -43,6 +44,7 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function DashboardPage() {
+  const { isAdmin } = useAuth();
   const { data: calls, isLoading, isError } = useCalls();
   const today = useTodaySpend();
 
@@ -55,7 +57,7 @@ function DashboardPage() {
     <AppShell title="Overview" description="Live call performance across your voice agents">
       <FilterBar />
 
-      {today.over ? (
+      {isAdmin && today.over ? (
         <div className="mb-6 flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           <span>
@@ -73,37 +75,60 @@ function DashboardPage() {
       ) : (
         <>
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-            <section className="min-w-0 overflow-hidden rounded-lg bg-primary p-6 text-primary-foreground shadow-card sm:p-8" aria-label="Retell spending">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase text-primary-foreground/75">Total Retell spend</p>
-                  {isLoading ? <Skeleton className="mt-3 h-12 w-40 bg-primary-foreground/20" /> : <p className="num mt-3 break-words text-4xl font-bold sm:text-5xl">{formatUsd(kpis.totalCost)}</p>}
+            {isAdmin ? (
+              <section className="min-w-0 overflow-hidden rounded-lg bg-primary p-6 text-primary-foreground shadow-card sm:p-8" aria-label="Retell spending">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase text-primary-foreground/75">Total Retell spend</p>
+                    {isLoading ? <Skeleton className="mt-3 h-12 w-40 bg-primary-foreground/20" /> : <p className="num mt-3 break-words text-4xl font-bold sm:text-5xl">{formatUsd(kpis.totalCost)}</p>}
+                  </div>
+                  <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-foreground/15"><DollarSign className="size-5" /></span>
                 </div>
-                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-foreground/15"><DollarSign className="size-5" /></span>
-              </div>
-              <div className="mt-7 grid grid-cols-2 gap-4 border-t border-primary-foreground/25 pt-5">
-                <div><p className="text-xs text-primary-foreground/75">Spend today</p><p className="num mt-1 text-lg font-semibold">{isLoading ? "—" : formatUsd(kpis.costToday)}</p></div>
-                <div><p className="text-xs text-primary-foreground/75">Average per call</p><p className="num mt-1 text-lg font-semibold">{isLoading ? "—" : formatUsd(kpis.avgCost)}</p></div>
-              </div>
-            </section>
+                <div className="mt-7 grid grid-cols-2 gap-4 border-t border-primary-foreground/25 pt-5">
+                  <div><p className="text-xs text-primary-foreground/75">Spend today</p><p className="num mt-1 text-lg font-semibold">{isLoading ? "—" : formatUsd(kpis.costToday)}</p></div>
+                  <div><p className="text-xs text-primary-foreground/75">Average per call</p><p className="num mt-1 text-lg font-semibold">{isLoading ? "—" : formatUsd(kpis.avgCost)}</p></div>
+                </div>
+              </section>
+            ) : (
+              <section className="min-w-0 overflow-hidden rounded-lg bg-primary p-6 text-primary-foreground shadow-card sm:p-8" aria-label="Call volume">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase text-primary-foreground/75">Total calls</p>
+                    {isLoading ? <Skeleton className="mt-3 h-12 w-40 bg-primary-foreground/20" /> : <p className="num mt-3 break-words text-4xl font-bold sm:text-5xl">{kpis.totalCalls.toLocaleString()}</p>}
+                  </div>
+                  <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-foreground/15"><PhoneCall className="size-5" /></span>
+                </div>
+                <div className="mt-7 grid grid-cols-2 gap-4 border-t border-primary-foreground/25 pt-5">
+                  <div><p className="text-xs text-primary-foreground/75">Calls today</p><p className="num mt-1 text-lg font-semibold">{isLoading ? "—" : kpis.callsToday.toLocaleString()}</p></div>
+                  <div><p className="text-xs text-primary-foreground/75">Average duration</p><p className="num mt-1 text-lg font-semibold">{isLoading ? "—" : formatDuration(kpis.avgDurationMs)}</p></div>
+                </div>
+              </section>
+            )}
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <div className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-soft sm:p-5">
-                <div className="flex items-center gap-2 text-muted-foreground"><PhoneCall className="size-4 shrink-0 text-primary" /><span className="text-xs font-medium">Total calls</span></div>
-                <p className="num mt-4 text-3xl font-bold text-foreground">{isLoading ? "—" : kpis.totalCalls.toLocaleString()}</p>
-              </div>
               <div className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-soft sm:p-5">
                 <div className="flex items-center gap-2 text-muted-foreground"><Clock3 className="size-4 shrink-0 text-primary" /><span className="text-xs font-medium">Talk time</span></div>
                 <p className="num mt-4 text-2xl font-bold text-foreground sm:text-3xl">{isLoading ? "—" : formatDuration(kpis.totalTalkMs)}</p>
               </div>
+              {isAdmin ? (
+                <div className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-soft sm:p-5">
+                  <div className="flex items-center gap-2 text-muted-foreground"><PhoneCall className="size-4 shrink-0 text-primary" /><span className="text-xs font-medium">Total calls</span></div>
+                  <p className="num mt-4 text-3xl font-bold text-foreground">{isLoading ? "—" : kpis.totalCalls.toLocaleString()}</p>
+                </div>
+              ) : (
+                <div className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-soft sm:p-5">
+                  <div className="flex items-center gap-2 text-muted-foreground"><Target className="size-4 shrink-0 text-primary" /><span className="text-xs font-medium">Success rate</span></div>
+                  <p className="num mt-4 text-3xl font-bold text-foreground">{isLoading ? "—" : `${kpis.successRate.toFixed(1)}%`}</p>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
             <section className="min-w-0 rounded-lg border border-border bg-card p-5 shadow-soft sm:p-6">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-semibold text-foreground">Daily Retell spend</h2>
-                <span className="text-xs text-muted-foreground">USD</span>
+                <h2 className="text-base font-semibold text-foreground">{isAdmin ? "Daily Retell spend" : "Daily call volume"}</h2>
+                <span className="text-xs text-muted-foreground">{isAdmin ? "USD" : "Calls"}</span>
               </div>
             {isLoading ? (
               <Skeleton className="mt-4 h-52 w-full" />
@@ -112,9 +137,9 @@ function DashboardPage() {
                 <BarChart data={series}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                   <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} stroke="var(--muted-foreground)" />
-                  <YAxis tickLine={false} axisLine={false} fontSize={12} stroke="var(--muted-foreground)" tickFormatter={(v: number) => `$${v}`} />
-                  <Tooltip formatter={(v: number) => formatUsd(v)} contentStyle={{ borderRadius: 12, borderColor: "var(--border)", backgroundColor: "var(--popover)", color: "var(--popover-foreground)" }} />
-                  <Bar dataKey="cost" name="Retell spend" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={12} stroke="var(--muted-foreground)" tickFormatter={isAdmin ? ((v: number) => `$${v}`) : ((v: number) => String(v))} allowDecimals={false} />
+                  <Tooltip formatter={isAdmin ? ((v: number) => formatUsd(v)) : ((v: number) => [`${v} calls`, "Calls"])} contentStyle={{ borderRadius: 12, borderColor: "var(--border)", backgroundColor: "var(--popover)", color: "var(--popover-foreground)" }} />
+                  <Bar dataKey={isAdmin ? "cost" : "calls"} name={isAdmin ? "Retell spend" : "Calls"} fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -132,8 +157,17 @@ function DashboardPage() {
                   <span className="num text-sm font-semibold text-foreground">{isLoading ? "—" : `${kpis.positiveRate.toFixed(1)}%`}</span>
                 </div>
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3">
-                  <span className="flex min-w-0 items-center gap-3 text-sm text-muted-foreground"><Gauge className="size-4 shrink-0 text-primary" />Cost per minute</span>
-                  <span className="num text-sm font-semibold text-foreground">{isLoading ? "—" : formatUsd(kpis.costPerMinute)}</span>
+                  {isAdmin ? (
+                    <>
+                      <span className="flex min-w-0 items-center gap-3 text-sm text-muted-foreground"><Gauge className="size-4 shrink-0 text-primary" />Cost per minute</span>
+                      <span className="num text-sm font-semibold text-foreground">{isLoading ? "—" : formatUsd(kpis.costPerMinute)}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex min-w-0 items-center gap-3 text-sm text-muted-foreground"><Clock3 className="size-4 shrink-0 text-primary" />Avg duration</span>
+                      <span className="num text-sm font-semibold text-foreground">{isLoading ? "—" : formatDuration(kpis.avgDurationMs)}</span>
+                    </>
+                  )}
                 </div>
               </div>
               <Button variant="link" className="mt-2 px-0" asChild><Link to="/analytics">View analytics →</Link></Button>
@@ -154,7 +188,9 @@ function DashboardPage() {
                 {agents.map((a) => (
                   <div key={a.agent} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-5 py-3 text-sm">
                     <div className="min-w-0"><p className="font-medium text-foreground">{a.agent}</p><p className="mt-1 text-xs text-muted-foreground">{a.calls} calls · {a.successRate.toFixed(0)}% success</p></div>
-                    <span className="num shrink-0 font-semibold text-foreground">{formatUsd(a.cost)}</span>
+                    {isAdmin && (
+                      <span className="num shrink-0 font-semibold text-foreground">{formatUsd(a.cost)}</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -167,7 +203,7 @@ function DashboardPage() {
                       <th className="px-5 py-2 font-medium">Minutes</th>
                       <th className="px-5 py-2 font-medium">Success</th>
                       <th className="px-5 py-2 font-medium">Positive</th>
-                      <th className="px-5 py-2 font-medium">Retell cost</th>
+                      {isAdmin && <th className="px-5 py-2 font-medium">Retell cost</th>}
                     </tr>
                   </thead>
                   <tbody className="num">
@@ -178,7 +214,7 @@ function DashboardPage() {
                         <td className="px-5 py-3">{a.minutes.toFixed(1)}</td>
                         <td className="px-5 py-3">{a.successRate.toFixed(0)}%</td>
                         <td className="px-5 py-3">{a.positiveRate.toFixed(0)}%</td>
-                        <td className="px-5 py-3">{formatUsd(a.cost)}</td>
+                        {isAdmin && <td className="px-5 py-3">{formatUsd(a.cost)}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -211,7 +247,9 @@ function DashboardPage() {
                 {recent.map((call) => (
                   <div key={call.call_id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-5 py-3 text-sm">
                     <div className="min-w-0"><p className="truncate font-medium text-foreground">{call.agent_name}</p><p className="mt-1 text-xs text-muted-foreground">{formatDateTime(call.start_timestamp)} · {formatDuration(call.duration_ms)}</p></div>
-                    <span className="num shrink-0 font-semibold text-foreground">{call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}</span>
+                    {isAdmin && (
+                      <span className="num shrink-0 font-semibold text-foreground">{call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -225,7 +263,7 @@ function DashboardPage() {
                       <th className="px-5 py-2 font-medium">Duration</th>
                       <th className="px-5 py-2 font-medium">Sentiment</th>
                       <th className="px-5 py-2 font-medium">Success</th>
-                      <th className="px-5 py-2 font-medium">Cost</th>
+                      {isAdmin && <th className="px-5 py-2 font-medium">Cost</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -241,9 +279,11 @@ function DashboardPage() {
                         <td className="px-5 py-3">
                           <SuccessBadge successful={call.call_analysis.call_successful} />
                         </td>
-                        <td className="num whitespace-nowrap px-5 py-3 font-medium">
-                          {call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}
-                        </td>
+                        {isAdmin && (
+                          <td className="num whitespace-nowrap px-5 py-3 font-medium">
+                            {call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

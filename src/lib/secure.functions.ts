@@ -75,13 +75,19 @@ export const secureListCalls = createServerFn({ method: "POST" })
   }))
   .handler(async ({ context, data }): Promise<RetellCall[]> => {
     let agentIds = data.agentIds;
-    if (!(await isAdminUser(context.supabase, context.userId))) {
+    const isAdmin = await isAdminUser(context.supabase, context.userId);
+    if (!isAdmin) {
       // Subaccount: the browser's agent list is never trusted.
       const allowed = (await loadAssignments(context.supabase, context.userId)).map((a) => a.retell_agent_id);
       agentIds = agentIds.length ? agentIds.filter((id) => allowed.includes(id)) : allowed;
       if (!agentIds.length) return [];
     }
-    return fetchCallsRaw(agentIds, data.from, data.to);
+    const calls = await fetchCallsRaw(agentIds, data.from, data.to);
+    if (!isAdmin) {
+      // Pricing is hidden from subaccounts: omit call_cost completely
+      return calls.map(({ call_cost, ...rest }) => rest as RetellCall);
+    }
+    return calls;
   });
 
 export const secureGetCall = createServerFn({ method: "GET" })
@@ -89,9 +95,12 @@ export const secureGetCall = createServerFn({ method: "GET" })
   .inputValidator((d: { callId: string }) => ({ callId: String(d.callId).replace(/[^\w-]/g, "") }))
   .handler(async ({ context, data }): Promise<RetellCall> => {
     const call = await fetchCallRaw(data.callId);
-    if (!(await isAdminUser(context.supabase, context.userId))) {
+    const isAdmin = await isAdminUser(context.supabase, context.userId);
+    if (!isAdmin) {
       const allowed = (await loadAssignments(context.supabase, context.userId)).map((a) => a.retell_agent_id);
       if (!allowed.includes(call.agent_id)) throw new Error("You don't have access to this call.");
+      const { call_cost, ...rest } = call;
+      return rest as RetellCall;
     }
     return call;
   });

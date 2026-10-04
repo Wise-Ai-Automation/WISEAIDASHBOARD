@@ -48,21 +48,27 @@ export function callEmail(call: RetellCall): string | null {
   return null;
 }
 
-export function toCsv(calls: RetellCall[]) {
+export function toCsv(calls: RetellCall[], includeCost = true) {
   const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const headers = ["Phone", "Email", "Summary", "Duration (s)", "Date", "Sentiment"];
+  if (includeCost) headers.push("Cost (USD)");
+
   const rows = [
-    ["Phone", "Email", "Summary", "Duration (s)", "Date", "Sentiment", "Cost (USD)"].join(","),
-    ...calls.map((c) =>
-      [
+    headers.join(","),
+    ...calls.map((c) => {
+      const row = [
         escape(callPhoneNumber(c)),
         escape(callEmail(c) ?? ""),
         escape(c.call_analysis.call_summary ?? ""),
         Math.round(c.duration_ms / 1000),
         escape(new Date(c.start_timestamp).toISOString()),
         escape(c.call_analysis.user_sentiment),
-        c.call_cost ? c.call_cost.combined_cost.toFixed(3) : "",
-      ].join(","),
-    ),
+      ];
+      if (includeCost) {
+        row.push(c.call_cost ? c.call_cost.combined_cost.toFixed(3) : "");
+      }
+      return row.join(",");
+    }),
   ];
   return rows.join("\n");
 }
