@@ -72,12 +72,16 @@ export async function getCurrentUser(): Promise<Profile | null> {
 
 export async function requestPasswordReset(email: string) {
   if (!email.includes("@")) throw new Error("Please enter a valid email address.");
+  const redirectUrl =
+    typeof window !== "undefined" && window.location.origin
+      ? `${window.location.origin}/reset-password`
+      : "https://wiseaidashboard.netlify.app/reset-password";
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-    redirectTo: `${window.location.origin}/reset-password`,
+    redirectTo: redirectUrl,
   });
   if (error) {
-    if (error.status === 429) throw new Error("Too many reset requests. Please wait a while before trying again.");
-    throw new Error("Could not send the reset email. Please try again.");
+    if (error.status === 429) throw new Error("Too many reset requests. Please wait a minute before trying again.");
+    throw new Error(error.message || "Could not send the reset email. Please try again.");
   }
   return true;
 }
