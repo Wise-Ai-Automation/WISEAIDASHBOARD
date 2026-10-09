@@ -335,8 +335,8 @@ export function CallDetailBody({ call }: { call: RetellCall }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
-        <SentimentBadge sentiment={call.call_analysis.user_sentiment} />
-        <SuccessBadge successful={call.call_analysis.call_successful} />
+        <SentimentBadge sentiment={call.call_analysis?.user_sentiment ?? "Unknown"} />
+        <SuccessBadge successful={Boolean(call.call_analysis?.call_successful)} />
         <span className="rounded-md border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
           {formatReason(call.disconnection_reason)}
         </span>
@@ -345,7 +345,7 @@ export function CallDetailBody({ call }: { call: RetellCall }) {
       <div>
         <h3 className="font-display text-[15px] font-bold text-foreground">Summary</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-          {call.call_analysis.call_summary || "No summary available."}
+          {call.call_analysis?.call_summary || "No summary available."}
         </p>
       </div>
 

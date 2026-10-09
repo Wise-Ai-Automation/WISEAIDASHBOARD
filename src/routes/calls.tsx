@@ -6,6 +6,7 @@ import {
   Clock,
   DollarSign,
   Download,
+  PhoneCall,
   Receipt,
   Search,
   Sparkles,
