@@ -1,5 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowUpDown, Clock, DollarSign, Download, PhoneCall, Receipt, Search, Target, Timer } from "lucide-react";
+import {
+  ArrowUpDown,
+  CalendarCheck,
+  CalendarX,
+  Clock,
+  DollarSign,
+  Download,
+  Receipt,
+  Search,
+  Sparkles,
+  Target,
+  Timer,
+  User,
+  Voicemail,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -11,7 +25,18 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCalls } from "@/hooks/use-calls";
-import { callEmail, callPhoneNumber, downloadCsv, formatDateTime, formatDuration, formatReason, toCsv } from "@/lib/format";
+import {
+  callAppointmentBooked,
+  callBookingId,
+  callCustomerName,
+  callEmail,
+  callPhoneNumber,
+  downloadCsv,
+  formatDateTime,
+  formatDuration,
+  formatReason,
+  toCsv,
+} from "@/lib/format";
 import type { RetellCall } from "@/lib/types";
 import { formatUsd } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth-context";
@@ -50,12 +75,25 @@ function CallsPage() {
     const term = search.trim().toLowerCase();
     const list = (calls ?? []).filter((c) => {
       if (!term) return true;
+      const customValues = Object.entries(c.call_analysis?.custom_analysis_data ?? {})
+        .flatMap(([k, v]) => [k, typeof v === "object" ? JSON.stringify(v) : String(v ?? "")])
+        .join(" ");
+      const collectedValues = Object.entries(c.collected_dynamic_variables ?? {})
+        .flatMap(([k, v]) => [k, typeof v === "object" ? JSON.stringify(v) : String(v ?? "")])
+        .join(" ");
+      const customer = callCustomerName(c) ?? "";
+      const booking = callBookingId(c) ?? "";
+
       return [
         c.agent_name,
+        customer,
+        booking,
         callPhoneNumber(c),
         callEmail(c) ?? "",
-        c.call_analysis.call_summary,
+        c.call_analysis?.call_summary ?? "",
         c.disconnection_reason,
+        customValues,
+        collectedValues,
       ]
         .join(" ")
         .toLowerCase()
@@ -101,7 +139,7 @@ function CallsPage() {
               setSearch(e.target.value);
               setPage(0);
             }}
-            placeholder="Search phone, email, agent or summary"
+            placeholder="Search caller, phone, email, booking, or any extracted variable..."
             className="pl-9"
           />
         </div>
@@ -186,8 +224,8 @@ function CallsPage() {
                       Agent <ArrowUpDown className="size-3" />
                     </button>
                   </th>
-                  <th className="px-4 py-3 font-medium">Phone</th>
-                  <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">Caller / Contact</th>
+                  <th className="px-4 py-3 font-medium">Post-Call Analysis</th>
                   <th className="px-4 py-3 font-medium">
                     <button className="flex items-center gap-1" onClick={() => sortBy("duration_ms")}>
                       Duration <ArrowUpDown className="size-3" />
@@ -197,78 +235,166 @@ function CallsPage() {
                   <th className="px-4 py-3 font-medium">Sentiment</th>
                   <th className="px-4 py-3 font-medium">Success</th>
                   {isAdmin && <th className="px-4 py-3 font-medium">Cost</th>}
-                  <th className="min-w-64 px-4 py-3 font-medium">Summary</th>
+                  <th className="min-w-56 px-4 py-3 font-medium">Summary</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((call) => (
-                  <tr
-                    key={call.call_id}
-                    onClick={() => setSelected(call)}
-                    className="cursor-pointer border-t border-border transition-colors hover:bg-muted/50"
-                  >
-                    <td className="whitespace-nowrap px-4 py-3">{formatDateTime(call.start_timestamp)}</td>
-                    <td className="whitespace-nowrap px-4 py-3">{call.agent_name}</td>
-                    <td className="whitespace-nowrap px-4 py-3">{callPhoneNumber(call)}</td>
-                    <td className="whitespace-nowrap px-4 py-3">{callEmail(call) ?? "—"}</td>
-                    <td className="whitespace-nowrap px-4 py-3">{formatDuration(call.duration_ms)}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant="outline" className="whitespace-nowrap font-normal">
-                        {formatReason(call.disconnection_reason)}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <SentimentBadge sentiment={call.call_analysis.user_sentiment} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <SuccessBadge successful={call.call_analysis.call_successful} />
-                    </td>
-                    {isAdmin && (
-                      <td className="num whitespace-nowrap px-4 py-3 font-medium">
-                        {call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}
+                {rows.map((call) => {
+                  const customerName = callCustomerName(call);
+                  const email = callEmail(call);
+                  const booked = callAppointmentBooked(call);
+                  const bookingId = callBookingId(call);
+                  const inVoicemail = call.call_analysis?.in_voicemail;
+                  const customVarsCount = Object.keys(call.call_analysis?.custom_analysis_data ?? {}).length;
+
+                  return (
+                    <tr
+                      key={call.call_id}
+                      onClick={() => setSelected(call)}
+                      className="cursor-pointer border-t border-border transition-colors hover:bg-muted/50"
+                    >
+                      <td className="whitespace-nowrap px-4 py-3 text-xs">{formatDateTime(call.start_timestamp)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 font-medium">{call.agent_name}</td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <div className="flex flex-col">
+                          {customerName ? (
+                            <span className="flex items-center gap-1 font-semibold text-foreground">
+                              <User className="size-3 text-primary" /> {customerName}
+                            </span>
+                          ) : null}
+                          <span className="text-xs text-muted-foreground">{callPhoneNumber(call)}</span>
+                          {email ? <span className="text-[11px] text-muted-foreground/80">{email}</span> : null}
+                        </div>
                       </td>
-                    )}
-                    <td className="px-4 py-3">
-                      <span className="line-clamp-2 max-w-md text-muted-foreground">
-                        {call.call_analysis.call_summary}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {booked !== null && (
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                                booked
+                                  ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                  : "border border-muted bg-muted/60 text-muted-foreground",
+                              )}
+                            >
+                              {booked ? <CalendarCheck className="size-3" /> : <CalendarX className="size-3" />}
+                              {booked ? "Booked" : "Not booked"}
+                            </span>
+                          )}
+                          {bookingId && (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                              #{bookingId}
+                            </span>
+                          )}
+                          {inVoicemail && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                              <Voicemail className="size-3" /> Voicemail
+                            </span>
+                          )}
+                          {booked === null && !inVoicemail && customVarsCount > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-border/80 bg-muted/30 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                              <Sparkles className="size-2.5 text-primary" /> {customVarsCount} extracted
+                            </span>
+                          )}
+                          {booked === null && !inVoicemail && customVarsCount === 0 && (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">{formatDuration(call.duration_ms)}</td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className="whitespace-nowrap font-normal">
+                          {formatReason(call.disconnection_reason)}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <SentimentBadge sentiment={call.call_analysis?.user_sentiment ?? "Unknown"} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <SuccessBadge successful={Boolean(call.call_analysis?.call_successful)} />
+                      </td>
+                      {isAdmin && (
+                        <td className="num whitespace-nowrap px-4 py-3 font-medium">
+                          {call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}
+                        </td>
+                      )}
+                      <td className="px-4 py-3">
+                        <span className="line-clamp-2 max-w-xs text-muted-foreground">
+                          {call.call_analysis?.call_summary || "—"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
           <div className="divide-y divide-border md:hidden">
-            {rows.map((call) => (
-              <Button
-                key={call.call_id}
-                type="button"
-                variant="ghost"
-                onClick={() => setSelected(call)}
-                className="block h-auto w-full rounded-none p-4 text-left transition-colors hover:bg-muted/50"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-foreground">{call.agent_name}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{formatDateTime(call.start_timestamp)}</div>
-                  </div>
-                  {isAdmin && (
-                    <div className="num shrink-0 text-right text-sm font-bold text-foreground">
-                      {call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}
-                      <div className="mt-0.5 text-[11px] font-normal text-muted-foreground">Retell cost</div>
+            {rows.map((call) => {
+              const customerName = callCustomerName(call);
+              const booked = callAppointmentBooked(call);
+              const inVoicemail = call.call_analysis?.in_voicemail;
+
+              return (
+                <Button
+                  key={call.call_id}
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setSelected(call)}
+                  className="block h-auto w-full rounded-none p-4 text-left transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-foreground">{call.agent_name}</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">{formatDateTime(call.start_timestamp)}</div>
                     </div>
-                  )}
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{formatDuration(call.duration_ms)}</span>
-                  <SuccessBadge successful={call.call_analysis.call_successful} />
-                  <SentimentBadge sentiment={call.call_analysis.user_sentiment} />
-                </div>
-                <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                  {call.call_analysis.call_summary || "No summary available."}
-                </p>
-              </Button>
-            ))}
+                    {isAdmin && (
+                      <div className="num shrink-0 text-right text-sm font-bold text-foreground">
+                        {call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}
+                        <div className="mt-0.5 text-[11px] font-normal text-muted-foreground">Retell cost</div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {customerName && (
+                      <span className="flex items-center gap-1 font-semibold text-xs text-foreground">
+                        <User className="size-3 text-primary" /> {customerName}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground">{callPhoneNumber(call)}</span>
+                  </div>
+
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                    {booked !== null && (
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                          booked
+                            ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                            : "border border-muted bg-muted/60 text-muted-foreground",
+                        )}
+                      >
+                        {booked ? <CalendarCheck className="size-3" /> : <CalendarX className="size-3" />}
+                        {booked ? "Booked" : "Not booked"}
+                      </span>
+                    )}
+                    {inVoicemail && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                        <Voicemail className="size-3" /> Voicemail
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground">{formatDuration(call.duration_ms)}</span>
+                    <SuccessBadge successful={Boolean(call.call_analysis?.call_successful)} />
+                    <SentimentBadge sentiment={call.call_analysis?.user_sentiment ?? "Unknown"} />
+                  </div>
+
+                  <p className="mt-2.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                    {call.call_analysis?.call_summary || "No summary available."}
+                  </p>
+                </Button>
+              );
+            })}
           </div>
           </>
         )}

@@ -74,6 +74,8 @@ function normalizeCall(c: Raw): RetellCall {
       call_summary: String(a.call_summary ?? ""),
       call_successful: Boolean(a.call_successful),
       user_sentiment: normalizeSentiment(a.user_sentiment),
+      in_voicemail: Boolean(a.in_voicemail),
+      call_completion_rating: a.call_completion_rating ? String(a.call_completion_rating) : undefined,
       custom_analysis_data: a.custom_analysis_data ?? {},
     },
     retell_llm_dynamic_variables: c.retell_llm_dynamic_variables ?? {},

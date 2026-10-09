@@ -76,10 +76,12 @@ export interface RetellCall {
     call_summary: string;
     call_successful: boolean;
     user_sentiment: Sentiment;
-    custom_analysis_data?: Record<string, string | number | boolean | null>;
+    in_voicemail?: boolean;
+    call_completion_rating?: string;
+    custom_analysis_data?: Record<string, any>;
   };
-  retell_llm_dynamic_variables?: Record<string, string>;
-  collected_dynamic_variables?: Record<string, string>;
+  retell_llm_dynamic_variables?: Record<string, any>;
+  collected_dynamic_variables?: Record<string, any>;
 }
 
 export interface CallsQuery {

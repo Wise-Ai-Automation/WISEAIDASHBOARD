@@ -1,5 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Clock3, DollarSign, Gauge, PhoneCall, Smile, Target } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarCheck,
+  CalendarX,
+  Clock3,
+  DollarSign,
+  Gauge,
+  PhoneCall,
+  Smile,
+  Target,
+  User,
+  Voicemail,
+} from "lucide-react";
+import { useState } from "react";
 import {
   Bar,
   BarChart,
@@ -12,18 +25,26 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/components/require-auth";
 import { FilterBar, SentimentBadge, SuccessBadge } from "@/components/filter-bar";
+import { CallDetailDrawer } from "@/components/call-detail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCalls, useTodaySpend } from "@/hooks/use-calls";
-import { AlertTriangle } from "lucide-react";
 import {
   agentStats,
   buildSeries,
   computeKpis,
   formatUsd,
 } from "@/lib/analytics";
-import { callPhoneNumber, formatDateTime, formatDuration } from "@/lib/format";
+import {
+  callAppointmentBooked,
+  callCustomerName,
+  callPhoneNumber,
+  formatDateTime,
+  formatDuration,
+} from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
+import type { RetellCall } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -47,6 +68,7 @@ function DashboardPage() {
   const { isAdmin } = useAuth();
   const { data: calls, isLoading, isError } = useCalls();
   const today = useTodaySpend();
+  const [selected, setSelected] = useState<RetellCall | null>(null);
 
   const kpis = computeKpis(calls ?? []);
   const series = buildSeries(calls ?? [], "day");
@@ -244,14 +266,67 @@ function DashboardPage() {
             ) : (
               <>
               <div className="divide-y divide-border sm:hidden">
-                {recent.map((call) => (
-                  <div key={call.call_id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-5 py-3 text-sm">
-                    <div className="min-w-0"><p className="truncate font-medium text-foreground">{call.agent_name}</p><p className="mt-1 text-xs text-muted-foreground">{formatDateTime(call.start_timestamp)} · {formatDuration(call.duration_ms)}</p></div>
-                    {isAdmin && (
-                      <span className="num shrink-0 font-semibold text-foreground">{call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}</span>
-                    )}
-                  </div>
-                ))}
+                {recent.map((call) => {
+                  const customerName = callCustomerName(call);
+                  const booked = callAppointmentBooked(call);
+                  const inVoicemail = call.call_analysis?.in_voicemail;
+
+                  return (
+                    <Button
+                      key={call.call_id}
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setSelected(call)}
+                      className="block h-auto w-full rounded-none p-4 text-left transition-colors hover:bg-muted/50"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">{call.agent_name}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {formatDateTime(call.start_timestamp)} · {formatDuration(call.duration_ms)}
+                          </p>
+                        </div>
+                        {isAdmin && (
+                          <span className="num shrink-0 font-semibold text-foreground">
+                            {call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {customerName && (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
+                            <User className="size-3 text-primary" /> {customerName}
+                          </span>
+                        )}
+                        <span className="text-xs text-muted-foreground">{callPhoneNumber(call)}</span>
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        {booked !== null && (
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                              booked
+                                ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                : "border border-muted bg-muted/60 text-muted-foreground",
+                            )}
+                          >
+                            {booked ? <CalendarCheck className="size-3" /> : <CalendarX className="size-3" />}
+                            {booked ? "Booked" : "Not booked"}
+                          </span>
+                        )}
+                        {inVoicemail && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                            <Voicemail className="size-3" /> Voicemail
+                          </span>
+                        )}
+                        <SentimentBadge sentiment={call.call_analysis?.user_sentiment ?? "Unknown"} />
+                        <SuccessBadge successful={Boolean(call.call_analysis?.call_successful)} />
+                      </div>
+                    </Button>
+                  );
+                })}
               </div>
               <div className="hidden overflow-x-auto sm:block">
                 <table className="w-full text-sm">
@@ -259,7 +334,8 @@ function DashboardPage() {
                     <tr className="border-b border-border">
                       <th className="px-5 py-2 font-medium">Date</th>
                       <th className="px-5 py-2 font-medium">Agent</th>
-                      <th className="px-5 py-2 font-medium">Phone</th>
+                      <th className="px-5 py-2 font-medium">Caller / Contact</th>
+                      <th className="px-5 py-2 font-medium">Post-Call Analysis</th>
                       <th className="px-5 py-2 font-medium">Duration</th>
                       <th className="px-5 py-2 font-medium">Sentiment</th>
                       <th className="px-5 py-2 font-medium">Success</th>
@@ -267,25 +343,69 @@ function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {recent.map((call) => (
-                      <tr key={call.call_id} className="border-b border-border last:border-0 hover:bg-muted/50">
-                        <td className="whitespace-nowrap px-5 py-3">{formatDateTime(call.start_timestamp)}</td>
-                        <td className="px-5 py-3">{call.agent_name}</td>
-                        <td className="whitespace-nowrap px-5 py-3">{callPhoneNumber(call)}</td>
-                        <td className="whitespace-nowrap px-5 py-3">{formatDuration(call.duration_ms)}</td>
-                        <td className="px-5 py-3">
-                          <SentimentBadge sentiment={call.call_analysis.user_sentiment} />
-                        </td>
-                        <td className="px-5 py-3">
-                          <SuccessBadge successful={call.call_analysis.call_successful} />
-                        </td>
-                        {isAdmin && (
-                          <td className="num whitespace-nowrap px-5 py-3 font-medium">
-                            {call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}
+                    {recent.map((call) => {
+                      const customerName = callCustomerName(call);
+                      const booked = callAppointmentBooked(call);
+                      const inVoicemail = call.call_analysis?.in_voicemail;
+
+                      return (
+                        <tr
+                          key={call.call_id}
+                          onClick={() => setSelected(call)}
+                          className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/50"
+                        >
+                          <td className="whitespace-nowrap px-5 py-3 text-xs">{formatDateTime(call.start_timestamp)}</td>
+                          <td className="px-5 py-3 font-medium">{call.agent_name}</td>
+                          <td className="whitespace-nowrap px-5 py-3">
+                            <div className="flex flex-col">
+                              {customerName ? (
+                                <span className="flex items-center gap-1 font-semibold text-foreground">
+                                  <User className="size-3 text-primary" /> {customerName}
+                                </span>
+                              ) : null}
+                              <span className="text-xs text-muted-foreground">{callPhoneNumber(call)}</span>
+                            </div>
                           </td>
-                        )}
-                      </tr>
-                    ))}
+                          <td className="px-5 py-3">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {booked !== null && (
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                                    booked
+                                      ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                      : "border border-muted bg-muted/60 text-muted-foreground",
+                                  )}
+                                >
+                                  {booked ? <CalendarCheck className="size-3" /> : <CalendarX className="size-3" />}
+                                  {booked ? "Booked" : "Not booked"}
+                                </span>
+                              )}
+                              {inVoicemail && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                                  <Voicemail className="size-3" /> Voicemail
+                                </span>
+                              )}
+                              {booked === null && !inVoicemail && (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap px-5 py-3">{formatDuration(call.duration_ms)}</td>
+                          <td className="px-5 py-3">
+                            <SentimentBadge sentiment={call.call_analysis?.user_sentiment ?? "Unknown"} />
+                          </td>
+                          <td className="px-5 py-3">
+                            <SuccessBadge successful={Boolean(call.call_analysis?.call_successful)} />
+                          </td>
+                          {isAdmin && (
+                            <td className="num whitespace-nowrap px-5 py-3 font-medium">
+                              {call.call_cost ? formatUsd(call.call_cost.combined_cost) : "—"}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -294,6 +414,8 @@ function DashboardPage() {
           </div>
         </>
       )}
+
+      <CallDetailDrawer call={selected} onClose={() => setSelected(null)} />
     </AppShell>
   );
 }
