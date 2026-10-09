@@ -2,17 +2,21 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
   CalendarCheck,
+  CalendarDays,
   CalendarX,
+  Clock,
   Clock3,
   DollarSign,
   Gauge,
+  Kanban,
+  Mail,
   PhoneCall,
   Smile,
   Target,
   User,
   Voicemail,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -36,10 +40,15 @@ import {
 } from "@/lib/analytics";
 import {
   callAppointmentBooked,
+  callAppointmentTiming,
   callCustomerName,
+  callEmail,
+  callLeadStage,
   callPhoneNumber,
   formatDateTime,
   formatDuration,
+  STAGE_CONFIG,
+  type LeadStage,
 } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
@@ -74,6 +83,27 @@ function DashboardPage() {
   const series = buildSeries(calls ?? [], "day");
   const agents = agentStats(calls ?? []);
   const recent = [...(calls ?? [])].sort((a, b) => b.start_timestamp - a.start_timestamp).slice(0, 5);
+
+  const bookedAppointments = useMemo(() => {
+    return (calls ?? [])
+      .filter((c) => callAppointmentBooked(c) === true || callAppointmentTiming(c) != null)
+      .sort((a, b) => b.start_timestamp - a.start_timestamp);
+  }, [calls]);
+
+  const stageStats = useMemo(() => {
+    const counts: Record<LeadStage, number> = {
+      contacted: 0,
+      appointment_booked: 0,
+      not_booked: 0,
+      appointment_done: 0,
+      closed: 0,
+    };
+    for (const c of calls ?? []) {
+      const stg = callLeadStage(c);
+      counts[stg] = (counts[stg] || 0) + 1;
+    }
+    return counts;
+  }, [calls]);
 
   return (
     <AppShell title="Overview" description="Live call performance across your voice agents">
@@ -243,6 +273,181 @@ function DashboardPage() {
                 </table>
               </div>
               </>
+            )}
+          </div>
+
+          {/* Lead Pipeline Summary */}
+          <div className="mt-6 rounded-xl border border-border bg-card p-5 shadow-soft">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                  <Kanban className="size-4" />
+                </div>
+                <div>
+                  <h2 className="font-display text-[15px] font-bold text-foreground">
+                    Lead Pipeline Stages
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically extracted from AI voice calls and appointment outcomes
+                  </p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/pipeline">Open Pipeline Board →</Link>
+              </Button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {(
+                [
+                  "contacted",
+                  "appointment_booked",
+                  "not_booked",
+                  "appointment_done",
+                  "closed",
+                ] as LeadStage[]
+              ).map((stg) => {
+                const cfg = STAGE_CONFIG[stg];
+                const count = stageStats[stg] || 0;
+                const total = (calls ?? []).length;
+                const pct = total ? Math.round((count / total) * 100) : 0;
+
+                return (
+                  <Link
+                    key={stg}
+                    to="/pipeline"
+                    className="group rounded-xl border border-border bg-muted/20 p-3.5 transition-all hover:border-primary/40 hover:bg-muted/40"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground truncate">
+                        {cfg.label}
+                      </span>
+                      <span
+                        className="size-2 rounded-full shrink-0"
+                        style={{ backgroundColor: cfg.color }}
+                      />
+                    </div>
+                    <div className="num mt-2 font-display text-2xl font-bold text-foreground">
+                      {count}
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>{pct}% of calls</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Upcoming Appointments & Calendar Section */}
+          <div className="mt-6 rounded-xl border border-border bg-card shadow-soft">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+              <div className="flex items-center gap-2.5">
+                <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400">
+                  <CalendarDays className="size-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-[15px] font-bold text-foreground">
+                      Upcoming Appointments & Schedule
+                    </h2>
+                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                      {bookedAppointments.length} Booked
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Confirmed appointments scheduled during voice conversations
+                  </p>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/pipeline">View calendar in pipeline</Link>
+              </Button>
+            </div>
+
+            {isLoading ? (
+              <div className="space-y-3 p-5">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : bookedAppointments.length === 0 ? (
+              <div className="p-8 text-center">
+                <CalendarDays className="mx-auto size-8 text-muted-foreground/50" />
+                <p className="mt-2 text-sm font-medium text-foreground">
+                  No appointments scheduled yet
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  When your voice agents book appointments, client names, contact details, and timing will automatically show up here.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {bookedAppointments.slice(0, 6).map((call) => {
+                  const customerName = callCustomerName(call) || `Caller ${callPhoneNumber(call).slice(-4)}`;
+                  const email = callEmail(call);
+                  const timing = callAppointmentTiming(call);
+                  const phone = callPhoneNumber(call);
+
+                  return (
+                    <div
+                      key={call.call_id}
+                      onClick={() => setSelected(call)}
+                      className="group flex flex-wrap items-center justify-between gap-4 px-5 py-3.5 transition-colors hover:bg-muted/40 cursor-pointer"
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+                          <CalendarCheck className="size-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm text-foreground truncate">
+                              {customerName}
+                            </span>
+                            <span className="rounded-full bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.2 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                              Booked
+                            </span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1 font-mono text-[11px]">
+                              <PhoneCall className="size-3 text-muted-foreground" /> {phone}
+                            </span>
+                            {email && (
+                              <span className="flex items-center gap-1">
+                                <Mail className="size-3 text-muted-foreground" /> {email}
+                              </span>
+                            )}
+                            <span className="text-[11px]">via {call.agent_name}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        {timing && (
+                          <div className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                            <Clock className="size-3.5" />
+                            <span>{timing}</span>
+                          </div>
+                        )}
+                        <span className="text-xs text-muted-foreground hidden sm:inline">
+                          {formatDateTime(call.start_timestamp)}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelected(call);
+                          }}
+                          className="h-8 text-xs text-primary hover:text-primary/80"
+                        >
+                          View Call
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
 

@@ -40,6 +40,7 @@ import {
 import type { RetellCall } from "@/lib/types";
 import { formatUsd } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth-context";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/calls")({
   head: () => ({

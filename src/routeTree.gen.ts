@@ -15,6 +15,7 @@ import { Route as CallsRouteImport } from './routes/calls'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AdminBillingRouteImport } from './routes/admin/billing'
@@ -50,6 +51,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PipelineRoute = PipelineRouteImport.update({
+  id: '/pipeline',
+  path: '/pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/campaigns': typeof CampaignsRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/pipeline': typeof PipelineRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/campaigns': typeof CampaignsRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/pipeline': typeof PipelineRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/campaigns': typeof CampaignsRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/pipeline': typeof PipelineRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/admin/billing': typeof AdminBillingRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/dashboard'
     | '/forgot-password'
+    | '/pipeline'
     | '/reset-password'
     | '/settings'
     | '/admin/billing'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/dashboard'
     | '/forgot-password'
+    | '/pipeline'
     | '/reset-password'
     | '/settings'
     | '/admin/billing'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/dashboard'
     | '/forgot-password'
+    | '/pipeline'
     | '/reset-password'
     | '/settings'
     | '/admin/billing'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   CampaignsRoute: typeof CampaignsRoute
   DashboardRoute: typeof DashboardRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  PipelineRoute: typeof PipelineRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
   AdminBillingRoute: typeof AdminBillingRoute
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pipeline': {
+      id: '/pipeline'
+      path: '/pipeline'
+      fullPath: '/pipeline'
+      preLoaderRoute: typeof PipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsRoute: CampaignsRoute,
   DashboardRoute: DashboardRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  PipelineRoute: PipelineRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
   AdminBillingRoute: AdminBillingRoute,

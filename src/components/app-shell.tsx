@@ -1,6 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   BarChart3,
+  Kanban,
   Megaphone,
   Eye,
   LayoutDashboard,
@@ -33,6 +34,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 const NAV = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard, adminOnly: false },
   { to: "/calls", label: "Call Logs", icon: PhoneCall, adminOnly: false },
+  { to: "/pipeline", label: "Lead Pipeline", icon: Kanban, adminOnly: false },
   { to: "/analytics", label: "Analytics", icon: BarChart3, adminOnly: false },
   { to: "/campaigns", label: "Campaigns", icon: Megaphone, adminOnly: false },
   { to: "/admin/subaccounts", label: "Subaccounts", icon: Users, adminOnly: true },
