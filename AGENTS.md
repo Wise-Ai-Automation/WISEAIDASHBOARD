@@ -10,4 +10,6 @@
 - Campaign launches live in `src/lib/campaigns.functions.ts`; the server re-checks the agent and caller number against the user's assignments before calling Retell's batch-call API, so the browser can't reach agents or numbers it wasn't given.
 - Pricing and Retell costs are strictly hidden from subaccounts across all pages, tables, detail drawers, CSV exports, and server API responses; Retell costs, billing rates, revenue, profit, and workspace limits remain admin-only.
 
+- The React Native app in `mobile/` is a second client of the same backend: it signs in with Supabase and calls the REST routes in `src/routes/api.mobile.$.ts` (`src/lib/mobile-api.server.ts`), which reuse the same role/assignment checks and strip pricing for subaccounts. New mobile data needs go through that file, never around it.
+
 - Theme is applied before paint in the root head, with the persisted light/dark preference controlled by ThemeToggle; this avoids a flash and keeps all pages consistent.

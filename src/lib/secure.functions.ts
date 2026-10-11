@@ -12,13 +12,13 @@ import type { AgentAssignment, Profile, RetellAgent, RetellCall } from "./types"
  *     strictly to rows in agent_assignments for that user.
  */
 
-async function isAdminUser(supabase: SupabaseClient, userId: string): Promise<boolean> {
+export async function isAdminUser(supabase: SupabaseClient, userId: string): Promise<boolean> {
   const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
   if (error) return false;
   return (data ?? []).some((r) => r.role === "admin");
 }
 
-async function loadAssignments(supabase: SupabaseClient, userId: string): Promise<AgentAssignment[]> {
+export async function loadAssignments(supabase: SupabaseClient, userId: string): Promise<AgentAssignment[]> {
   const { data, error } = await supabase
     .from("agent_assignments")
     .select("retell_agent_id, agent_name")

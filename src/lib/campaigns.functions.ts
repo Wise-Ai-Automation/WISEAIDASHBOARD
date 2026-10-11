@@ -16,7 +16,7 @@ async function isAdmin(supabase: SupabaseClient, userId: string) {
   return (data ?? []).some((r) => r.role === "admin");
 }
 
-async function optionsFor(supabase: SupabaseClient, userId: string): Promise<CampaignOptions> {
+export async function optionsFor(supabase: SupabaseClient, userId: string): Promise<CampaignOptions> {
   if (await isAdmin(supabase, userId)) {
     const [agents, numbers] = await Promise.all([fetchAgentsRaw(), fetchPhoneNumbersRaw()]);
     return {
@@ -50,6 +50,70 @@ export const listCampaigns = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+export interface CampaignInput {
+  name: string;
+  agent_id: string;
+  from_number: string;
+  contacts: { phone: string; name?: string | undefined; email?: string | undefined; vars?: Record<string, string> | undefined }[];
+}
+
+/** Validates access and launches the batch call. Shared by the web server fn and the mobile REST route. */
+export async function createCampaignForUser(supabase: SupabaseClient, userId: string, data: CampaignInput): Promise<Campaign> {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_active")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!profile?.is_active) throw new Error("Your account is deactivated.");
+
+  const opts = await optionsFor(supabase, userId);
+  const agent = opts.agents.find((a) => a.retell_agent_id === data.agent_id);
+  if (!agent) throw new Error("You don't have access to that agent.");
+  if (!opts.numbers.includes(data.from_number)) throw new Error("You don't have access to that caller number.");
+
+  const seen = new Set<string>();
+  const contacts: { phone: string; name: string; email: string; vars: Record<string, string> }[] = [];
+  for (const c of data.contacts) {
+    const phone = normalizePhone(c.phone);
+    if (!phone || seen.has(phone)) continue;
+    seen.add(phone);
+    contacts.push({ phone, name: c.name ?? "", email: c.email ?? "", vars: c.vars ?? {} });
+  }
+  if (!contacts.length) throw new Error("No valid phone numbers found in the file.");
+
+  const batchId = await createBatchCallRaw({
+    name: data.name,
+    from_number: data.from_number,
+    tasks: contacts.map((c) => ({
+      to_number: c.phone,
+      override_agent_id: agent.retell_agent_id,
+      retell_llm_dynamic_variables: { ...c.vars, name: c.name, email: c.email, phone: c.phone },
+    })),
+  });
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: row, error } = await supabaseAdmin
+    .from("campaigns")
+    .insert({
+      user_id: userId,
+      name: data.name,
+      retell_agent_id: agent.retell_agent_id,
+      agent_name: agent.agent_name,
+      from_number: data.from_number,
+      retell_batch_call_id: batchId,
+      total_contacts: contacts.length,
+      status: "launched",
+      contacts,
+    })
+    .select("id, user_id, name, retell_agent_id, agent_name, from_number, retell_batch_call_id, total_contacts, status, created_at")
+    .single();
+  if (error || !row) {
+    console.error("campaign insert failed", error);
+    throw new Error("The calls started, but the campaign couldn't be saved to your list.");
+  }
+  return row;
+}
+
 const contactSchema = z.object({
   phone: z.string().min(1).max(40),
   name: z.string().max(200).optional(),
@@ -67,61 +131,7 @@ export const createCampaign = createServerFn({ method: "POST" })
       contacts: z.array(contactSchema).min(1, "Upload at least one contact.").max(5000, "Up to 5,000 contacts per campaign."),
     }).parse,
   )
-  .handler(async ({ context, data }): Promise<Campaign> => {
-    const { data: profile } = await context.supabase
-      .from("profiles")
-      .select("is_active")
-      .eq("id", context.userId)
-      .maybeSingle();
-    if (!profile?.is_active) throw new Error("Your account is deactivated.");
-
-    const opts = await optionsFor(context.supabase, context.userId);
-    const agent = opts.agents.find((a) => a.retell_agent_id === data.agent_id);
-    if (!agent) throw new Error("You don't have access to that agent.");
-    if (!opts.numbers.includes(data.from_number)) throw new Error("You don't have access to that caller number.");
-
-    const seen = new Set<string>();
-    const contacts: { phone: string; name: string; email: string; vars: Record<string, string> }[] = [];
-    for (const c of data.contacts) {
-      const phone = normalizePhone(c.phone);
-      if (!phone || seen.has(phone)) continue;
-      seen.add(phone);
-      contacts.push({ phone, name: c.name ?? "", email: c.email ?? "", vars: c.vars ?? {} });
-    }
-    if (!contacts.length) throw new Error("No valid phone numbers found in the file.");
-
-    const batchId = await createBatchCallRaw({
-      name: data.name,
-      from_number: data.from_number,
-      tasks: contacts.map((c) => ({
-        to_number: c.phone,
-        override_agent_id: agent.retell_agent_id,
-        retell_llm_dynamic_variables: { ...c.vars, name: c.name, email: c.email, phone: c.phone },
-      })),
-    });
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
-      .from("campaigns")
-      .insert({
-        user_id: context.userId,
-        name: data.name,
-        retell_agent_id: agent.retell_agent_id,
-        agent_name: agent.agent_name,
-        from_number: data.from_number,
-        retell_batch_call_id: batchId,
-        total_contacts: contacts.length,
-        status: "launched",
-        contacts,
-      })
-      .select("id, user_id, name, retell_agent_id, agent_name, from_number, retell_batch_call_id, total_contacts, status, created_at")
-      .single();
-    if (error || !row) {
-      console.error("campaign insert failed", error);
-      throw new Error("The calls started, but the campaign couldn't be saved to your list.");
-    }
-    return row;
-  });
+  .handler(async ({ context, data }): Promise<Campaign> => createCampaignForUser(context.supabase, context.userId, data));
 
 /* ---------------------- admin: caller numbers ---------------------- */
 

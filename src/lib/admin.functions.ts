@@ -24,7 +24,7 @@ function friendlyAuthError(message: string): Error {
   return new Error(message);
 }
 
-async function loadSubaccountProfiles(
+export async function loadSubaccountProfiles(
   supabase: import("@supabase/supabase-js").SupabaseClient,
 ): Promise<Profile[]> {
   const { data: roles, error: rolesError } = await supabase

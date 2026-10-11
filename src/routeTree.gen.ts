@@ -20,6 +20,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as AdminBillingRouteImport } from './routes/admin/billing'
 import { Route as AdminSubaccountsRouteImport } from './routes/admin/subaccounts'
+import { Route as ApiMobileSplatRouteImport } from './routes/api.mobile.$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -76,6 +77,11 @@ const AdminSubaccountsRoute = AdminSubaccountsRouteImport.update({
   path: '/admin/subaccounts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMobileSplatRoute = ApiMobileSplatRouteImport.update({
+  id: '/api/mobile/$',
+  path: '/api/mobile/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/subaccounts': typeof AdminSubaccountsRoute
+  '/api/mobile/$': typeof ApiMobileSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/subaccounts': typeof AdminSubaccountsRoute
+  '/api/mobile/$': typeof ApiMobileSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/subaccounts': typeof AdminSubaccountsRoute
+  '/api/mobile/$': typeof ApiMobileSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/admin/billing'
     | '/admin/subaccounts'
+    | '/api/mobile/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/admin/billing'
     | '/admin/subaccounts'
+    | '/api/mobile/$'
   id:
     | '__root__'
     | '/'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/admin/billing'
     | '/admin/subaccounts'
+    | '/api/mobile/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -171,6 +183,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   AdminBillingRoute: typeof AdminBillingRoute
   AdminSubaccountsRoute: typeof AdminSubaccountsRoute
+  ApiMobileSplatRoute: typeof ApiMobileSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -252,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSubaccountsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/mobile/$': {
+      id: '/api/mobile/$'
+      path: '/api/mobile/$'
+      fullPath: '/api/mobile/$'
+      preLoaderRoute: typeof ApiMobileSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -267,6 +287,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   AdminBillingRoute: AdminBillingRoute,
   AdminSubaccountsRoute: AdminSubaccountsRoute,
+  ApiMobileSplatRoute: ApiMobileSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
