@@ -10,6 +10,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    /** True when the body was our API's JSON error — i.e. the route exists and answered. */
+    public fromApi = false,
   ) {
     super(message);
   }
@@ -39,7 +41,11 @@ async function request<T>(path: string, init: { method?: string; body?: unknown 
   }
   if (!res.ok) {
     const message = (payload as { error?: string } | null)?.error;
-    throw new ApiError(message ?? "Something went wrong. Please try again.", res.status);
+    if (!message && (res.status === 404 || res.status === 405)) {
+      // An HTML 404 means the route isn't on the server — not that the user is missing.
+      throw new ApiError("The server isn't ready for the mobile app yet. Please ask your administrator to deploy the latest web update.", res.status);
+    }
+    throw new ApiError(message ?? "Something went wrong. Please try again.", res.status, message != null);
   }
   return payload as T;
 }
@@ -64,7 +70,8 @@ async function loadProfile(): Promise<Profile | null> {
   try {
     return await request<Profile>("me");
   } catch (e) {
-    if (e instanceof ApiError && (e.status === 404 || e.status === 403)) return null;
+    // Only a real answer from our API ("profile not found" / "deactivated") means no profile.
+    if (e instanceof ApiError && e.fromApi && (e.status === 404 || e.status === 403)) return null;
     throw e;
   }
 }
