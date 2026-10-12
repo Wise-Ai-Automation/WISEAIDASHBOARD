@@ -1,5 +1,8 @@
 {
-  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
       "developmentClient": true,
@@ -14,11 +17,16 @@
     "preview": {
       "distribution": "internal",
       "channel": "preview",
-      "android": { "buildType": "apk" },
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://fzctafnfqudemyedspzf.supabase.co",
         "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6Y3RhZm5mcXVkZW15ZWRzcHpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzOTM4NzAsImV4cCI6MjEwNTk2OTg3MH0.SmGbYQY9feOlLk46xetCg_W1oskiQsRHvQB5So7ynRQ",
         "EXPO_PUBLIC_API_URL": "https://wiseaidashboard.netlify.app"
+      },
+      "ios": {
+        "simulator": true
       }
     },
     "production": {
@@ -31,5 +39,7 @@
       }
     }
   },
-  "submit": { "production": {} }
+  "submit": {
+    "production": {}
+  }
 }
