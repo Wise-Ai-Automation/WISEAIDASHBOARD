@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Linking, Pressable, View } from "react-native";
+import { Linking, Platform, Pressable, View } from "react-native";
 import { AudioPlayer } from "@/components/audio-player";
 import { SentimentBadge, SuccessBadge, sentimentColor } from "@/components/filter-bar";
 import { Avatar, Badge, Button, Card, ErrorBanner, Group, Overline, Reveal, Screen, Skeleton, T, tap } from "@/components/ui";
@@ -113,7 +113,9 @@ export default function CallDetailScreen() {
   ];
 
   return (
-    <Screen back={() => router.back()} tabBar={false}>
+    // On iOS this title drives the compact native header; on Android/web it stays
+    // unset so no duplicate heading appears above the big avatar block below.
+    <Screen title={Platform.OS === "ios" ? (name ?? phone ?? "Call") : undefined} back={() => router.back()} tabBar={false}>
       <Reveal index={0}>
         <View style={{ alignItems: "center", gap: 14 }}>
           <Avatar name={name ?? phone ?? "?"} size={76} color={tint} />

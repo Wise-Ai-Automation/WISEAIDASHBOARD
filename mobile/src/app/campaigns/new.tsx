@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Alert, View } from "react-native";
-import { Button, Card, ErrorBanner, Field, Pill, Screen, Skeleton, T } from "@/components/ui";
+import { Button, Card, ErrorBanner, Field, Pill, Screen, Skeleton, T, bodyFont } from "@/components/ui";
 import * as api from "@/lib/api";
 import { normalizePhone } from "@/lib/phone";
 import { radius, useTheme } from "@/lib/theme";
@@ -115,7 +115,7 @@ export default function NewCampaignScreen() {
             backgroundColor: c.card,
             color: c.text,
             fontSize: 15,
-            fontFamily: "Inter_500Medium",
+            ...bodyFont(),
           }}
         />
         <T size={12} muted>

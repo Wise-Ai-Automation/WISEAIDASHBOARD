@@ -1,23 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
+import type { SFSymbol } from "sf-symbols-typescript";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { PlatformIcon } from "@/components/platform-icon";
 import { T, tap, type IconName } from "@/components/ui";
 import { useAgents, useCalls, usePreviousCalls } from "@/lib/hooks";
 import { useTheme } from "@/lib/theme";
 
-const META: Record<string, { title: string; icon: IconName; active: IconName }> = {
-  index: { title: "Overview", icon: "grid-outline", active: "grid" },
-  calls: { title: "Calls", icon: "call-outline", active: "call" },
-  pipeline: { title: "Pipeline", icon: "funnel-outline", active: "funnel" },
-  analytics: { title: "Analytics", icon: "stats-chart-outline", active: "stats-chart" },
-  more: { title: "More", icon: "person-circle-outline", active: "person-circle" },
+const META: Record<string, { title: string; icon: IconName; active: IconName; sf: SFSymbol; sfActive: SFSymbol }> = {
+  index: { title: "Overview", icon: "grid-outline", active: "grid", sf: "square.grid.2x2", sfActive: "square.grid.2x2.fill" },
+  calls: { title: "Calls", icon: "call-outline", active: "call", sf: "phone", sfActive: "phone.fill" },
+  pipeline: { title: "Pipeline", icon: "funnel-outline", active: "funnel", sf: "tray.2", sfActive: "tray.2.fill" },
+  analytics: { title: "Analytics", icon: "stats-chart-outline", active: "stats-chart", sf: "chart.bar", sfActive: "chart.bar.fill" },
+  more: { title: "More", icon: "person-circle-outline", active: "person-circle", sf: "person.crop.circle", sfActive: "person.crop.circle.fill" },
 };
 
 type BarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>["tabBar"]>>[0];
 
-/** Floating, blurred tab bar: icons only, with the active tab expanding into a labelled pill. */
+/** Floating, blurred tab bar: icons only, with the active tab expanding into a labelled pill. Android/web. */
 function FloatingTabBar({ state, navigation }: BarProps) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
@@ -80,18 +82,40 @@ function FloatingTabBar({ state, navigation }: BarProps) {
 }
 
 export default function TabsLayout() {
+  const { c } = useTheme();
   // Warm the shared caches once so every tab opens with data already in memory.
   useCalls();
   usePreviousCalls();
   useAgents();
 
+  if (Platform.OS === "ios") {
+    // The system tab bar (translucent, always-labelled, SF Symbols that swap to
+    // their filled variant when active) instead of our custom floating pill —
+    // each tab also owns a nested Stack (see e.g. (tabs)/index/_layout.tsx) so
+    // it gets a real native header too.
+    return (
+      <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: c.primary, tabBarInactiveTintColor: c.muted }}>
+        {Object.entries(META).map(([name, meta]) => (
+          <Tabs.Screen
+            key={name}
+            name={name}
+            options={{
+              title: meta.title,
+              tabBarIcon: ({ focused, color }) => (
+                <PlatformIcon ios={focused ? meta.sfActive : meta.sf} android={meta.icon} color={color} size={25} weight={focused ? "semibold" : "regular"} />
+              ),
+            }}
+          />
+        ))}
+      </Tabs>
+    );
+  }
+
   return (
     <Tabs screenOptions={{ headerShown: false }} tabBar={(props) => <FloatingTabBar {...props} />}>
-      <Tabs.Screen name="index" />
-      <Tabs.Screen name="calls" />
-      <Tabs.Screen name="pipeline" />
-      <Tabs.Screen name="analytics" />
-      <Tabs.Screen name="more" />
+      {Object.keys(META).map((name) => (
+        <Tabs.Screen key={name} name={name} />
+      ))}
     </Tabs>
   );
 }

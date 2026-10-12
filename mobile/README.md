@@ -31,6 +31,31 @@ npx expo start            # scan with Expo Go, or press i / a for a simulator
 `expo-audio` and `expo-secure-store` work in Expo Go on SDK 57; for store builds use
 `npx eas-cli@latest build`.
 
+## iOS has its own native UI
+
+Android/web keep the branded, card-based design (floating tab bar, Inter font,
+in-content title block). iOS gets genuine platform chrome instead — same screens
+and data, different navigation feel:
+
+- **Native headers**: each tab is a one-screen `Stack` (`(tabs)/<tab>/_layout.tsx`
+  + `index.tsx`) so it gets a real collapsing large title; pushed screens (call
+  detail, settings, campaigns, admin) get a compact title with the automatic
+  native back button. Both are wired from `components/ui.tsx`'s `Screen` —
+  pass `title`/`back`/`search` and it renders the right one per platform.
+- **Native search**: the Calls tab's search box becomes a real nav-bar search
+  field (`headerSearchBarOptions`) instead of an in-content `TextInput`.
+- **Native tab bar**: the system bottom tab bar with SF Symbols that swap to
+  their filled variant when active (`components/platform-icon.tsx`), instead
+  of the floating pill.
+- **Native sheets**: `Sheet` (agent picker, date range, move-stage) opens as a
+  real page sheet (`presentationStyle="pageSheet"`) with the system drag
+  handle, instead of our drawn bottom sheet.
+- **System font**: body text uses San Francisco at the matching weight instead
+  of Inter (`bodyFont()` in `components/ui.tsx`).
+
+This is all `Platform.OS` branching inside the existing shared files — there's
+no `.ios.tsx` fork of the UI kit, so Android/web are byte-for-byte unaffected.
+
 ## Layout
 
 ```

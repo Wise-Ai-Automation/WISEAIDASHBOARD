@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { StackedBar } from "@/components/charts";
 import { FilterBar } from "@/components/filter-bar";
-import { Avatar, Badge, Card, EmptyState, ErrorBanner, Group, OptionRow, Pill, Reveal, Screen, Sheet, Skeleton, T, tap } from "@/components/ui";
+import { Avatar, Badge, Card, EmptyState, ErrorBanner, Group, OptionRow, Pill, Reveal, Screen, Sheet, Skeleton, T, bodyFont, tap } from "@/components/ui";
 import {
   callAppointmentTiming,
   callCustomerName,
@@ -118,7 +118,7 @@ export default function PipelineScreen() {
           onChangeText={setQuery}
           placeholder="Search leads"
           placeholderTextColor={c.faint}
-          style={[{ flex: 1, color: c.text, fontSize: 15, fontFamily: "Inter_500Medium" }, { outlineStyle: "none" } as object]}
+          style={[{ flex: 1, color: c.text, fontSize: 15, ...bodyFont() }, { outlineStyle: "none" } as object]}
           autoCorrect={false}
         />
       </View>

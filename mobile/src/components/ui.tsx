@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Stack } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
@@ -6,6 +7,7 @@ import {
   ActivityIndicator,
   Animated,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -13,7 +15,9 @@ import {
   Text,
   TextInput,
   View,
+  type NativeSyntheticEvent,
   type StyleProp,
+  type TextInputFocusEventData,
   type TextInputProps,
   type TextStyle,
   type ViewStyle,
@@ -21,6 +25,8 @@ import {
 import Reanimated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, space, useTheme } from "@/lib/theme";
+
+const IOS = Platform.OS === "ios";
 
 export type IconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -37,6 +43,22 @@ const FONT = {
   "700": "Inter_700Bold",
   "800": "Inter_800ExtraBold",
 } as const;
+
+// iOS uses the system font (San Francisco) at the matching native weight instead
+// of the Inter family — Apple HIG expects the platform font, and native header
+// titles (set below in Screen) always render in it, so body text matches.
+const IOS_WEIGHT: Record<keyof typeof FONT, TextStyle["fontWeight"]> = {
+  "400": "400",
+  "500": "500",
+  "600": "600",
+  "700": "700",
+  "800": "800",
+};
+
+/** Font style for raw `TextInput`s outside `T` (Field, search boxes) — same iOS/Android split. */
+export function bodyFont(weight: keyof typeof FONT = "500"): TextStyle {
+  return IOS ? { fontWeight: IOS_WEIGHT[weight] } : { fontFamily: FONT[weight] };
+}
 
 export function T({
   children,
@@ -65,7 +87,7 @@ export function T({
       numberOfLines={numberOfLines}
       style={[
         {
-          fontFamily: FONT[weight],
+          ...(IOS ? { fontWeight: IOS_WEIGHT[weight] } : { fontFamily: FONT[weight] }),
           fontSize: size,
           color: color ?? (muted ? c.muted : c.text),
           letterSpacing: tracking ?? (size >= 26 ? -0.6 : size >= 18 ? -0.25 : 0),
@@ -293,7 +315,7 @@ export function Field({
         {icon ? <Ionicons name={icon} size={19} color={c.muted} /> : null}
         <TextInput
           placeholderTextColor={c.faint}
-          style={[{ flex: 1, color: c.text, fontSize: 16, fontFamily: FONT["500"], paddingVertical: 0 }, { outlineStyle: "none" } as object]}
+          style={[{ flex: 1, color: c.text, fontSize: 16, ...bodyFont(), paddingVertical: 0 }, { outlineStyle: "none" } as object]}
           {...input}
         />
         {right}
@@ -447,6 +469,33 @@ export function Sheet({
 }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  // iOS gets a real native page sheet (rounded corners, drag handle, swipe-to-dismiss
+  // all supplied by the system) instead of our own drawn bottom sheet. `transparent`
+  // must be false for `presentationStyle="pageSheet"` to take effect on iOS.
+  const header = (
+    <>
+      <T size={22} weight="800">
+        {title}
+      </T>
+      {subtitle ? (
+        <T size={13} muted style={{ marginTop: 3 }}>
+          {subtitle}
+        </T>
+      ) : null}
+    </>
+  );
+  if (IOS) {
+    return (
+      <Modal visible={visible} presentationStyle="pageSheet" animationType="slide" onRequestClose={onClose}>
+        <View style={{ flex: 1, backgroundColor: c.bg, paddingHorizontal: space.xl, paddingTop: space.xl }}>
+          {header}
+          <ScrollView style={{ marginTop: space.lg }} contentContainerStyle={{ paddingBottom: insets.bottom + space.xl }} showsVerticalScrollIndicator={false}>
+            {children}
+          </ScrollView>
+        </View>
+      </Modal>
+    );
+  }
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: "rgba(4,6,18,0.5)" }} onPress={onClose} />
@@ -462,14 +511,7 @@ export function Sheet({
         }}
       >
         <View style={{ alignSelf: "center", width: 38, height: 4, borderRadius: 2, backgroundColor: c.border, marginBottom: space.lg }} />
-        <T size={22} weight="800">
-          {title}
-        </T>
-        {subtitle ? (
-          <T size={13} muted style={{ marginTop: 3 }}>
-            {subtitle}
-          </T>
-        ) : null}
+        {header}
         <View style={{ marginTop: space.lg }}>{children}</View>
       </View>
     </Modal>
@@ -582,6 +624,12 @@ export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: (
 /* ----------------------------- layout ------------------------------ */
 
 /** Scrollable page with a header, pull-to-refresh and safe-area padding (clears the floating tab bar). */
+export interface ScreenSearch {
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder?: string;
+}
+
 export function Screen({
   title,
   subtitle,
@@ -592,6 +640,7 @@ export function Screen({
   onRefresh,
   tabBar = true,
   back,
+  search,
 }: {
   title?: string;
   subtitle?: string;
@@ -602,24 +651,56 @@ export function Screen({
   onRefresh?: () => void;
   tabBar?: boolean;
   back?: () => void;
+  /** iOS only: wires a real native nav-bar search field in place of an in-content one. */
+  search?: ScreenSearch;
 }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  // Every screen using Screen sits inside a Stack (either a tab's own nested
+  // stack or the root stack), so on iOS it can own a real native header: a
+  // collapsing large title for tab roots (no `back`), or a compact title with
+  // the automatic native back button for pushed screens. Android/web keep the
+  // in-content title block exactly as before — unchanged.
+  const nativeChrome = IOS && Boolean(title || back);
+
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      {nativeChrome ? (
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            title: title ?? "",
+            headerLargeTitleEnabled: !back,
+            headerTransparent: true,
+            headerBlurEffect: "systemMaterial",
+            headerShadowVisible: false,
+            headerTintColor: c.primary,
+            headerTitleStyle: { color: c.text },
+            headerLargeTitleStyle: { color: c.text },
+            headerRight: right ? () => right : undefined,
+            headerSearchBarOptions: search
+              ? {
+                  placeholder: search.placeholder ?? "Search",
+                  hideWhenScrolling: false,
+                  onChangeText: (e: NativeSyntheticEvent<TextInputFocusEventData>) => search.onChangeText(e.nativeEvent.text),
+                }
+              : undefined,
+          }}
+        />
+      ) : null}
       <ScrollView
-        contentInsetAdjustmentBehavior="never"
+        contentInsetAdjustmentBehavior={nativeChrome ? "automatic" : "never"}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: insets.top + space.lg,
-          paddingBottom: (tabBar ? 118 : insets.bottom + space.xl) + space.lg,
+          paddingTop: nativeChrome ? 0 : insets.top + space.lg,
+          paddingBottom: nativeChrome ? (tabBar ? space.xl : insets.bottom + space.xl) : (tabBar ? 118 : insets.bottom + space.xl) + space.lg,
           paddingHorizontal: space.xl,
           gap: space.xl,
         }}
         refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={c.primary} /> : undefined}
       >
-        {title || right || back ? (
+        {!nativeChrome && (title || right || back) ? (
           <View style={{ gap: space.md }}>
             {back ? <IconButton icon="chevron-back" onPress={back} /> : null}
             <View style={styles.header}>
@@ -640,6 +721,7 @@ export function Screen({
             </View>
           </View>
         ) : null}
+        {nativeChrome && subtitle ? <T size={13} muted>{subtitle}</T> : null}
         {children}
       </ScrollView>
     </View>

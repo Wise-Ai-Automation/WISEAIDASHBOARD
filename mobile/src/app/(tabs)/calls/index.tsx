@@ -1,10 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { ScrollView, TextInput, View } from "react-native";
+import { Platform, ScrollView, TextInput, View } from "react-native";
 import { CallRow } from "@/components/call-row";
 import { FilterBar } from "@/components/filter-bar";
-import { Button, EmptyState, ErrorBanner, Group, Overline, Pill, Reveal, Screen, Skeleton, T } from "@/components/ui";
+import { Button, EmptyState, ErrorBanner, Group, Overline, Pill, Reveal, Screen, Skeleton, T, bodyFont } from "@/components/ui";
 import { callAppointmentBooked, callCustomerName, callEmail, callPhoneNumber } from "@/lib/format";
 import { useCalls } from "@/lib/hooks";
 import { radius, space, useTheme } from "@/lib/theme";
@@ -63,42 +63,49 @@ export default function CallsScreen() {
     ["booked", "Booked"],
   ];
 
+  const setQueryAndReset = (v: string) => {
+    setQuery(v);
+    setShown(PAGE);
+  };
+
   return (
     <Screen
       title="Calls"
       subtitle={isLoading ? "Loading…" : `${filtered.length.toLocaleString()} call${filtered.length === 1 ? "" : "s"} in range`}
       refreshing={isRefetching}
       onRefresh={() => void refetch()}
+      // iOS gets a real native search field in the nav bar instead of the
+      // in-content one drawn below.
+      search={Platform.OS === "ios" ? { value: query, onChangeText: setQueryAndReset, placeholder: "Search name, phone, summary" } : undefined}
     >
       <View style={{ gap: space.md }}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 10,
-            paddingHorizontal: 16,
-            height: 52,
-            borderRadius: radius.md + 2,
-            backgroundColor: c.card,
-            borderWidth: 1,
-            borderColor: c.border,
-          }}
-        >
-          <Ionicons name="search" size={18} color={c.faint} />
-          <TextInput
-            value={query}
-            onChangeText={(v) => {
-              setQuery(v);
-              setShown(PAGE);
+        {Platform.OS === "ios" ? null : (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              paddingHorizontal: 16,
+              height: 52,
+              borderRadius: radius.md + 2,
+              backgroundColor: c.card,
+              borderWidth: 1,
+              borderColor: c.border,
             }}
-            placeholder="Search name, phone, summary"
-            placeholderTextColor={c.faint}
-            style={[{ flex: 1, color: c.text, fontSize: 15, fontFamily: "Inter_500Medium" }, { outlineStyle: "none" } as object]}
-            autoCorrect={false}
-            returnKeyType="search"
-          />
-          {query ? <Ionicons name="close-circle" size={18} color={c.faint} onPress={() => setQuery("")} /> : null}
-        </View>
+          >
+            <Ionicons name="search" size={18} color={c.faint} />
+            <TextInput
+              value={query}
+              onChangeText={setQueryAndReset}
+              placeholder="Search name, phone, summary"
+              placeholderTextColor={c.faint}
+              style={[{ flex: 1, color: c.text, fontSize: 15, ...bodyFont() }, { outlineStyle: "none" } as object]}
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {query ? <Ionicons name="close-circle" size={18} color={c.faint} onPress={() => setQuery("")} /> : null}
+          </View>
+        )}
         <FilterBar />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.xl }} contentContainerStyle={{ paddingHorizontal: space.xl, gap: 8 }}>
           {OUTCOMES.map(([key, label]) => (
