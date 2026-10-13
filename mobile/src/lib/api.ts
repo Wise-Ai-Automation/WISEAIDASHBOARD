@@ -12,15 +12,19 @@ export class ApiError extends Error {
     public status: number,
     /** True when the body was our API's JSON error — i.e. the route exists and answered. */
     public fromApi = false,
+    /** Extra diagnostic shown in parens by the login screen — never a secret, just what went wrong. */
+    public detail?: string,
   ) {
     super(message);
   }
 }
 
 async function request<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
-  const { data } = await supabase.auth.getSession();
+  const { data, error: sessionError } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  if (!token) throw new ApiError("Please sign in again.", 401);
+  if (!token) {
+    throw new ApiError("Please sign in again.", 401, false, `no local session · ${path}${sessionError ? ` · ${sessionError.message}` : ""}`);
+  }
 
   let res: Response;
   try {
@@ -29,8 +33,8 @@ async function request<T>(path: string, init: { method?: string; body?: unknown 
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: init.body === undefined ? null : JSON.stringify(init.body),
     });
-  } catch {
-    throw new ApiError("Can't reach the server. Check your connection and try again.", 0);
+  } catch (e) {
+    throw new ApiError("Can't reach the server. Check your connection and try again.", 0, false, `${path} · ${e instanceof Error ? e.message : String(e)}`);
   }
   const text = await res.text();
   let payload: unknown = null;
@@ -43,9 +47,21 @@ async function request<T>(path: string, init: { method?: string; body?: unknown 
     const message = (payload as { error?: string } | null)?.error;
     if (!message && (res.status === 404 || res.status === 405)) {
       // An HTML 404 means the route isn't on the server — not that the user is missing.
-      throw new ApiError("The server isn't ready for the mobile app yet. Please ask your administrator to deploy the latest web update.", res.status);
+      throw new ApiError(
+        "The server isn't ready for the mobile app yet. Please ask your administrator to deploy the latest web update.",
+        res.status,
+        false,
+        `${path}`,
+      );
     }
-    throw new ApiError(message ?? "Something went wrong. Please try again.", res.status, message != null);
+    // Keep a slice of the raw body when there's no parsed message, so an unexpected
+    // (e.g. non-JSON gateway/edge) error is visible instead of just "went wrong".
+    throw new ApiError(
+      message ?? "Something went wrong. Please try again.",
+      res.status,
+      message != null,
+      `${res.status} · ${path}${message ? "" : ` · ${text.slice(0, 160) || "(empty body)"}`}`,
+    );
   }
   return payload as T;
 }
@@ -82,7 +98,18 @@ export async function signIn(email: string, password: string): Promise<Profile> 
     console.warn("[auth] sign-in rejected", error.status, error.code, error.message);
     throw friendlyAuthError(error.message, { code: error.code, status: error.status });
   }
-  const profile = await loadProfile();
+  // Supabase just confirmed the session; a 401 right here means the token hasn't
+  // finished persisting to the session yet rather than a real rejection. One
+  // short retry absorbs that instead of showing a false "sign in again" error.
+  let profile: Profile | null;
+  try {
+    profile = await loadProfile();
+  } catch (e) {
+    if (!(e instanceof ApiError) || e.status !== 401) throw e;
+    console.warn("[auth] profile check got 401 right after sign-in — retrying once");
+    await new Promise((r) => setTimeout(r, 700));
+    profile = await loadProfile();
+  }
   if (!profile || !profile.is_active) {
     await supabase.auth.signOut();
     throw new Error(
