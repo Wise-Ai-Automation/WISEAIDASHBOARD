@@ -36,11 +36,19 @@ const RELAY = `${API_URL}/api/mobile/sb`;
 let useRelay = false;
 
 function viaRelay(url: string) {
-  return url.startsWith(SUPABASE_URL) ? RELAY + url.slice(SUPABASE_URL.length) : url;
+  // Guard against SUPABASE_URL being empty (misconfigured env): "".startsWith("")
+  // is always true, which would otherwise mangle every URL instead of just ours.
+  return SUPABASE_URL && url.startsWith(SUPABASE_URL) ? RELAY + url.slice(SUPABASE_URL.length) : url;
 }
 
 const resilientFetch: typeof fetch = async (input, init) => {
   const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+  if (!SUPABASE_URL) {
+    // Fail loudly instead of quietly hitting "http://localhost" and cascading into a
+    // confusing, unrelated-looking error — this means EXPO_PUBLIC_SUPABASE_URL wasn't
+    // baked into this build/update (check EAS env vars for its branch/channel).
+    throw new Error("App isn't configured (missing Supabase URL). Please contact your administrator.");
+  }
   if (useRelay) return fetch(viaRelay(url), init);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
