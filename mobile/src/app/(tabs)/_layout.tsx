@@ -20,7 +20,7 @@ const META: Record<string, { title: string; icon: IconName; active: IconName; sf
 type BarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>["tabBar"]>>[0];
 
 /** Floating, blurred tab bar: icons only, with the active tab expanding into a labelled pill. Android/web. */
-function FloatingTabBar({ state, navigation }: BarProps) {
+function FloatingTabBar({ state, emitter, navigateToTab }: BarProps) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
   return (
@@ -53,8 +53,8 @@ function FloatingTabBar({ state, navigation }: BarProps) {
                 accessibilityLabel={meta.title}
                 onPress={() => {
                   tap();
-                  const e = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
-                  if (!focused && !e.defaultPrevented) navigation.navigate(route.name);
+                  const e = emitter.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+                  if (!focused && !e.defaultPrevented) navigateToTab(route.key);
                 }}
                 style={{
                   height: 48,

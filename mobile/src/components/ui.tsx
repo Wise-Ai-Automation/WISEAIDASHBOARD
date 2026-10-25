@@ -17,11 +17,11 @@ import {
   View,
   type NativeSyntheticEvent,
   type StyleProp,
-  type TextInputFocusEventData,
   type TextInputProps,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import type { SearchBarTextEventData } from "react-native-screens";
 import Reanimated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, space, useTheme } from "@/lib/theme";
@@ -682,7 +682,7 @@ export function Screen({
               ? {
                   placeholder: search.placeholder ?? "Search",
                   hideWhenScrolling: false,
-                  onChangeText: (e: NativeSyntheticEvent<TextInputFocusEventData>) => search.onChangeText(e.nativeEvent.text),
+                  onChangeText: (e: NativeSyntheticEvent<SearchBarTextEventData>) => search.onChangeText(e.nativeEvent.text),
                 }
               : undefined,
           }}
