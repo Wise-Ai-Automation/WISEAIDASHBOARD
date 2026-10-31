@@ -146,6 +146,13 @@ function LoginPage() {
           <p className="mt-6 text-center text-xs text-muted-foreground">
             Accounts are created by an administrator. Contact yours if you need access.
           </p>
+          <p className="mt-3 flex items-center justify-center gap-3 text-center text-xs text-muted-foreground">
+            <Link to="/privacy" className="hover:text-foreground hover:underline">Privacy</Link>
+            <span aria-hidden="true">·</span>
+            <Link to="/terms" className="hover:text-foreground hover:underline">Terms</Link>
+            <span aria-hidden="true">·</span>
+            <Link to="/support" className="hover:text-foreground hover:underline">Support</Link>
+          </p>
         </div>
       </main>
     </div>

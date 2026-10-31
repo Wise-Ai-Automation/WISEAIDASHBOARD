@@ -16,8 +16,11 @@ import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as PipelineRouteImport } from './routes/pipeline'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SupportRouteImport } from './routes/support'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AdminBillingRouteImport } from './routes/admin/billing'
 import { Route as AdminSubaccountsRouteImport } from './routes/admin/subaccounts'
 import { Route as ApiMobileSplatRouteImport } from './routes/api.mobile.$'
@@ -57,6 +60,11 @@ const PipelineRoute = PipelineRouteImport.update({
   path: '/pipeline',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -65,6 +73,16 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminBillingRoute = AdminBillingRouteImport.update({
@@ -91,8 +109,11 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/pipeline': typeof PipelineRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/subaccounts': typeof AdminSubaccountsRoute
   '/api/mobile/$': typeof ApiMobileSplatRoute
@@ -105,8 +126,11 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/pipeline': typeof PipelineRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/subaccounts': typeof AdminSubaccountsRoute
   '/api/mobile/$': typeof ApiMobileSplatRoute
@@ -120,8 +144,11 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/pipeline': typeof PipelineRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/subaccounts': typeof AdminSubaccountsRoute
   '/api/mobile/$': typeof ApiMobileSplatRoute
@@ -136,8 +163,11 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/forgot-password'
     | '/pipeline'
+    | '/privacy'
     | '/reset-password'
     | '/settings'
+    | '/support'
+    | '/terms'
     | '/admin/billing'
     | '/admin/subaccounts'
     | '/api/mobile/$'
@@ -150,8 +180,11 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/forgot-password'
     | '/pipeline'
+    | '/privacy'
     | '/reset-password'
     | '/settings'
+    | '/support'
+    | '/terms'
     | '/admin/billing'
     | '/admin/subaccounts'
     | '/api/mobile/$'
@@ -164,8 +197,11 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/forgot-password'
     | '/pipeline'
+    | '/privacy'
     | '/reset-password'
     | '/settings'
+    | '/support'
+    | '/terms'
     | '/admin/billing'
     | '/admin/subaccounts'
     | '/api/mobile/$'
@@ -179,8 +215,11 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   PipelineRoute: typeof PipelineRoute
+  PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
+  SupportRoute: typeof SupportRoute
+  TermsRoute: typeof TermsRoute
   AdminBillingRoute: typeof AdminBillingRoute
   AdminSubaccountsRoute: typeof AdminSubaccountsRoute
   ApiMobileSplatRoute: typeof ApiMobileSplatRoute
@@ -237,6 +276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PipelineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -249,6 +295,20 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/billing': {
@@ -283,8 +343,11 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   PipelineRoute: PipelineRoute,
+  PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
+  SupportRoute: SupportRoute,
+  TermsRoute: TermsRoute,
   AdminBillingRoute: AdminBillingRoute,
   AdminSubaccountsRoute: AdminSubaccountsRoute,
   ApiMobileSplatRoute: ApiMobileSplatRoute,

@@ -2,11 +2,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WiseLogo } from "@/components/logo";
 import { Button, ErrorBanner, Field, T } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 import { radius, space, useTheme } from "@/lib/theme";
 
 const BARS = [22, 38, 30, 54, 42, 66, 48, 76, 58, 84, 64, 50, 70, 44];
@@ -135,6 +136,20 @@ export default function LoginScreen() {
           <T size={12} muted style={{ textAlign: "center" }}>
             Accounts are created by your administrator.
           </T>
+          <View style={{ flexDirection: "row", justifyContent: "center", gap: space.sm }}>
+            {([
+              ["Privacy", "/privacy"],
+              ["Terms", "/terms"],
+              ["Support", "/support"],
+            ] as const).map(([label, path], i) => (
+              <Pressable key={path} onPress={() => void Linking.openURL(`${API_URL}${path}`)} hitSlop={8}>
+                <T size={12} color={c.muted}>
+                  {i > 0 ? "· " : ""}
+                  {label}
+                </T>
+              </Pressable>
+            ))}
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
