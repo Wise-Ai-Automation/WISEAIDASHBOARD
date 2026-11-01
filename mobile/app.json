@@ -9,13 +9,13 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "ai.wise.analytics",
+      "bundleIdentifier": "ai.onewise.analytics",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "ai.wise.analytics",
+      "package": "ai.onewise.analytics",
       "adaptiveIcon": {
         "backgroundColor": "#0D2A54",
         "foregroundImage": "./assets/android-icon-foreground.png",

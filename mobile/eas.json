@@ -44,6 +44,12 @@
       "android": {
         "track": "internal",
         "releaseStatus": "draft"
+      },
+      "ios": {
+        "appleTeamId": "2L9G77S72B",
+        "ascApiKeyPath": "./secrets/AuthKey_C744JBB56G.p8",
+        "ascApiKeyIssuerId": "8b1facdc-e92e-46bd-adf5-ec563746b3d8",
+        "ascApiKeyId": "C744JBB56G"
       }
     }
   }
