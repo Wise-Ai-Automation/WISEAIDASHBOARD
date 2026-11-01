@@ -4,7 +4,7 @@ ONEWISE AI brand kit (ONEWISE_AI_Brand_Kit/). Source assets there are raster
 (PNG), so this composites/resizes rather than hand-tracing vector paths.
 Run from the repo root: python3 scripts/gen-brand-assets.py
 """
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -12,11 +12,16 @@ KIT = os.path.join(ROOT, "ONEWISE_AI_Brand_Kit")
 MOBILE_ASSETS = os.path.join(ROOT, "mobile", "assets")
 WEB_PUBLIC = os.path.join(ROOT, "public")
 WEB_BRAND = os.path.join(WEB_PUBLIC, "brand")
+STORE_ASSETS = os.path.join(ROOT, "store-assets")
 
 NAVY = (13, 42, 84, 255)  # #0D2A54
+RED = (230, 0, 30, 255)  # #E6001E
 WHITE = (255, 255, 255, 255)
 
 MARK_SRC = os.path.join(KIT, "app-icons", "onewise-app-icon-1024.png")
+FONT_BOLD = os.path.join(
+    ROOT, "mobile", "node_modules", "@expo-google-fonts", "inter", "800ExtraBold", "Inter_800ExtraBold.ttf"
+)
 
 
 def load_mark_trimmed():
@@ -115,6 +120,40 @@ def main():
     header = square_canvas(512)
     paste_centered(header, mark, 0.92)
     save(header, os.path.join(WEB_BRAND, "onewise-mark.png"))
+
+    # ---------------- Play Store listing assets ----------------
+    # Store listing icon: 512x512, opaque, matches the app icon treatment.
+    play_icon = square_canvas(512, WHITE)
+    paste_centered(play_icon, mark, 0.82)
+    save(play_icon.convert("RGB"), os.path.join(STORE_ASSETS, "play-icon-512.png"))
+
+    # Feature graphic: 1024x500, navy banner with a white icon tile + wordmark,
+    # sized to guarantee everything fits the fixed canvas with margin to spare.
+    fg_w, fg_h = 1024, 500
+    feature = Image.new("RGBA", (fg_w, fg_h), NAVY)
+    margin = int(fg_w * 0.06)
+
+    tile_size = int(fg_h * 0.56)
+    tile = Image.new("RGBA", (tile_size, tile_size), (0, 0, 0, 0))
+    draw_tile = ImageDraw.Draw(tile)
+    draw_tile.rounded_rectangle([0, 0, tile_size, tile_size], radius=int(tile_size * 0.22), fill=WHITE)
+    paste_centered(tile, mark, 0.82)
+    tile_y = (fg_h - tile_size) // 2
+    feature.alpha_composite(tile, (margin, tile_y))
+
+    draw = ImageDraw.Draw(feature)
+    text_x = margin + tile_size + int(fg_w * 0.045)
+    max_text_w = fg_w - margin - text_x
+    font_size = int(fg_h * 0.26)
+    font = ImageFont.truetype(FONT_BOLD, font_size)
+    while draw.textlength("onewiseAI", font=font) > max_text_w and font_size > 10:
+        font_size -= 2
+        font = ImageFont.truetype(FONT_BOLD, font_size)
+    onewise_w = draw.textlength("onewise", font=font)
+    text_y = fg_h // 2
+    draw.text((text_x, text_y), "onewise", font=font, fill=WHITE, anchor="lm")
+    draw.text((text_x + onewise_w, text_y), "AI", font=font, fill=RED, anchor="lm")
+    save(feature.convert("RGB"), os.path.join(STORE_ASSETS, "play-feature-graphic-1024x500.png"))
 
     print("done")
 
