@@ -28,6 +28,7 @@ function Gate() {
     <>
       <StatusBar style={c.dark ? "light" : "dark"} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }}>
+        <Stack.Screen name="index" />
         <Stack.Protected guard={!!user}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="call/[id]" options={{ presentation: "card" }} />
