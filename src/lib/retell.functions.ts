@@ -90,8 +90,8 @@ function normalizeCall(c: Raw): RetellCall {
 
 /** Phone numbers purchased on the Retell account. */
 export async function fetchPhoneNumbersRaw(): Promise<{ phone_number: string; pretty: string }[]> {
-  const list = (await retell("/list-phone-numbers")) as Raw[];
-  return list.map((n) => ({ phone_number: n.phone_number, pretty: n.phone_number_pretty ?? n.phone_number }));
+  const page = (await retell("/v2/list-phone-numbers?limit=1000")) as Raw;
+  return (page.items as Raw[]).map((n) => ({ phone_number: n.phone_number, pretty: n.phone_number_pretty ?? n.phone_number }));
 }
 
 /** Launch a Retell batch call. Returns the batch id. */
@@ -123,9 +123,12 @@ export async function createBatchCallRaw(body: {
 
 /** All agents on the Retell account, deduplicated by agent_id (latest version kept). */
 export async function fetchAgentsRaw(): Promise<RetellAgent[]> {
-  const agents = (await retell("/list-agents")) as Raw[];
+  const page = (await retell("/v2/list-agents?limit=1000", {
+    method: "POST",
+    body: JSON.stringify({ filter_criteria: { channel: { type: "string", op: "eq", value: "voice" } } }),
+  })) as Raw;
   const map = new Map<string, RetellAgent>();
-  for (const a of agents) {
+  for (const a of page.items as Raw[]) {
     map.set(a.agent_id, { agent_id: a.agent_id, agent_name: a.agent_name ?? a.agent_id });
   }
   return [...map.values()];
@@ -134,9 +137,9 @@ export async function fetchAgentsRaw(): Promise<RetellAgent[]> {
 /** All calls in the time window, optionally filtered to specific agents. */
 export async function fetchCallsRaw(agentIds: string[], from: number, to: number): Promise<RetellCall[]> {
   const filter_criteria: Raw = {
-    start_timestamp: { lower_threshold: from, upper_threshold: to },
+    start_timestamp: { type: "range", op: "bt", value: [from, to] },
   };
-  if (agentIds.length) filter_criteria.agent_id = agentIds;
+  if (agentIds.length) filter_criteria.agent = agentIds.map((id) => ({ agent_id: id }));
 
   const all: RetellCall[] = [];
   let pagination_key: string | undefined;
@@ -144,10 +147,10 @@ export async function fetchCallsRaw(agentIds: string[], from: number, to: number
   for (let page = 0; page < 20; page++) {
     const body: Raw = { filter_criteria, sort_order: "descending", limit: 1000 };
     if (pagination_key) body.pagination_key = pagination_key;
-    const rows = (await retell("/v2/list-calls", { method: "POST", body: JSON.stringify(body) })) as Raw[];
-    all.push(...rows.map(normalizeCall));
-    if (rows.length < 1000) break;
-    pagination_key = rows[rows.length - 1]?.call_id;
+    const res = (await retell("/v3/list-calls", { method: "POST", body: JSON.stringify(body) })) as Raw;
+    all.push(...(res.items as Raw[]).map(normalizeCall));
+    if (!res.has_more) break;
+    pagination_key = res.pagination_key;
   }
   return all;
 }
